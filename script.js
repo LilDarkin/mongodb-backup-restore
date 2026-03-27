@@ -281,27 +281,31 @@ async function main() {
 
   if (!command || !['dump', 'restore'].includes(command)) {
     console.log('Usage:');
-    console.log('  node script.js dump <mongodb-uri> <output-directory> [--db <db-name>]');
-    console.log('  node script.js restore <mongodb-uri> <input-directory> [--db <db-name>] [--drop]');
+    console.log('  node script.js dump <mongodb-uri> [-p <path>] [--db <db-name>]');
+    console.log('  node script.js restore <mongodb-uri> [-p <path>] [--db <db-name>] [--drop]');
     console.log('\nExamples:');
-    console.log('  node script.js dump "mongodb://localhost:27017" ./backup');
-    console.log('  node script.js dump "mongodb://localhost:27017" ./backup --db myDatabase');
-    console.log('  node script.js restore "mongodb://localhost:27017" ./backup');
-    console.log('  node script.js restore "mongodb://localhost:27017" ./backup --db myDatabase --drop');
-    console.log('\nNote: Always wrap the MongoDB URI in quotes to prevent shell interpretation!');
+    console.log('  node script.js dump "mongodb://localhost:27017" -p qa-metrics -db qa-metrics');
+    console.log('  node script.js restore "mongodb://localhost:27017" -p qa-metrics -db qa-metrics --drop');
+    console.log('\nNote: Paths via -p are automatically relative to the "backups" folder!');
     process.exit(1);
   }
 
   const uri = args[1];
-  const directory = args[2];
+  const pathIndex = args.findIndex(arg => arg === '--path' || arg === '-p');
+  let directory = (pathIndex !== -1 && args[pathIndex + 1]) ? args[pathIndex + 1] : args[2];
 
-  if (!uri || !directory) {
-    console.error('Error: Missing required arguments');
+  if (!uri || !directory || directory.startsWith('-')) {
+    console.error('Error: Missing required arguments (URI and Path/Directory)');
     process.exit(1);
   }
 
-  const dbIndex = args.indexOf('--db');
-  const dbName = dbIndex !== -1 ? args[dbIndex + 1] : null;
+  // Automatically prepend 'backups' if path is relative
+  if (!path.isAbsolute(directory) && !directory.startsWith('backups')) {
+    directory = path.join('backups', directory);
+  }
+
+  const dbIndex = args.findIndex(arg => arg === '--db' || arg === '-db');
+  const dbName = (dbIndex !== -1 && args[dbIndex + 1]) ? args[dbIndex + 1] : null;
 
   const backupRestore = new MongoBackupRestore(uri);
 

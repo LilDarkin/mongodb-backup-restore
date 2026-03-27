@@ -38,19 +38,17 @@ Exports databases from a MongoDB instance to a local directory.
 
 **Syntax:**
 ```bash
-node script.js dump <mongodb-uri> <output-directory> [--db <db-name>]
+node script.js dump <mongodb-uri> [-p <path>] [--db <db-name>]
 ```
 
 **Options:**
-- `--db <db-name>`: (Optional) Backup a specific database only.
+- `-p, --path <path>`: (Required/Optional) Output path for the backup. Relative paths are automatically saved inside the `backups/` folder.
+- `--db <db-name>`: (Optional) Backup a specific database only. Supports `-db` as well.
 
 **Example:**
 ```bash
-# Backup local MongoDB to ./my-backups folder
-node script.js dump "mongodb://localhost:27017" ./my-backups
-
-# Backup only 'myDatabase'
-node script.js dump "mongodb://localhost:27017" ./my-backups --db myDatabase
+# Backup 'myDatabase' to the 'backups/qa-metrics' folder
+node script.js dump "mongodb://localhost:27017" -p qa-metrics --db myDatabase
 ```
 
 **Output Structure:**
@@ -72,21 +70,22 @@ Restores databases from a backup directory to a MongoDB instance.
 
 **Syntax:**
 ```bash
-node script.js restore <mongodb-uri> <input-directory> [--db <db-name>] [--drop]
+node script.js restore <mongodb-uri> [-p <path>] [--db <db-name>] [--drop]
 ```
 
 **Options:**
+- `-p, --path <path>`: (Required/Optional) Input path of the backup. Relative paths are searched inside the `backups/` folder.
 - `--db <db-name>`: (Optional) Restore a specific database only from the backup directory.
 - `--drop`: (Optional) Drops the existing database or collection before restoring. Use with caution!
 
 **Examples:**
 
 ```bash
-# Restore from ./my-backups to local MongoDB
-node script.js restore "mongodb://localhost:27017" ./my-backups
+# Restore from backups/qa-metrics folder to local MongoDB
+node script.js restore "mongodb://localhost:27017" -p qa-metrics
 
-# Restore only 'myDatabase' and overwrite existing data
-node script.js restore "mongodb://localhost:27017" ./my-backups --db myDatabase --drop
+# Restore only 'myDatabase' from its backup and overwrite existing data
+node script.js restore "mongodb://localhost:27017" -p qa-metrics --db myDatabase --drop
 ```
 
 ## Important Notes
