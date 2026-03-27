@@ -22,18 +22,23 @@ class MongoBackupRestore {
     }
   }
 
-  async dump(outputDir) {
+  async dump(outputDir, dbName = null) {
     try {
       await this.connect();
       await fs.mkdir(outputDir, { recursive: true });
 
-      const admin = this.client.db().admin();
-      const { databases } = await admin.listDatabases();
-
-      // Filter out system databases
-      const userDatabases = databases.filter(
-        db => !['admin', 'local', 'config'].includes(db.name)
-      );
+      let userDatabases;
+      if (dbName) {
+        console.log(`Targeting specific database: ${dbName}`);
+        userDatabases = [{ name: dbName }];
+      } else {
+        const admin = this.client.db().admin();
+        const { databases } = await admin.listDatabases();
+        // Filter out system databases
+        userDatabases = databases.filter(
+          db => !['admin', 'local', 'config'].includes(db.name)
+        );
+      }
 
       console.log(`Found ${userDatabases.length} database(s) to backup`);
 
@@ -131,7 +136,7 @@ class MongoBackupRestore {
   }
 
   async restore(inputDir, options = {}) {
-    const { dropExisting = false } = options;
+    const { dropExisting = false, dbName = null } = options;
 
     try {
       await this.connect();
@@ -142,10 +147,19 @@ class MongoBackupRestore {
       const metadata = EJSON.parse(metadataContent);
 
       console.log(`Restoring backup from: ${metadata.backupDate}`);
-      console.log(`Found ${metadata.databases.length} database(s) to restore`);
+      
+      const databasesToRestore = dbName 
+        ? metadata.databases.filter(name => name === dbName)
+        : metadata.databases;
 
-      for (const dbName of metadata.databases) {
-        await this.restoreDatabase(dbName, inputDir, dropExisting);
+      if (dbName && databasesToRestore.length === 0) {
+        console.log(`Warning: Database "${dbName}" not found in backup metadata`);
+      }
+
+      console.log(`Found ${databasesToRestore.length} database(s) to restore`);
+
+      for (const db of databasesToRestore) {
+        await this.restoreDatabase(db, inputDir, dropExisting);
       }
 
       console.log('\nRestore completed successfully!');
@@ -267,12 +281,13 @@ async function main() {
 
   if (!command || !['dump', 'restore'].includes(command)) {
     console.log('Usage:');
-    console.log('  node script.js dump <mongodb-uri> <output-directory>');
-    console.log('  node script.js restore <mongodb-uri> <input-directory> [--drop]');
+    console.log('  node script.js dump <mongodb-uri> <output-directory> [--db <db-name>]');
+    console.log('  node script.js restore <mongodb-uri> <input-directory> [--db <db-name>] [--drop]');
     console.log('\nExamples:');
     console.log('  node script.js dump "mongodb://localhost:27017" ./backup');
+    console.log('  node script.js dump "mongodb://localhost:27017" ./backup --db myDatabase');
     console.log('  node script.js restore "mongodb://localhost:27017" ./backup');
-    console.log('  node script.js restore "mongodb://localhost:27017" ./backup --drop');
+    console.log('  node script.js restore "mongodb://localhost:27017" ./backup --db myDatabase --drop');
     console.log('\nNote: Always wrap the MongoDB URI in quotes to prevent shell interpretation!');
     process.exit(1);
   }
@@ -285,14 +300,17 @@ async function main() {
     process.exit(1);
   }
 
+  const dbIndex = args.indexOf('--db');
+  const dbName = dbIndex !== -1 ? args[dbIndex + 1] : null;
+
   const backupRestore = new MongoBackupRestore(uri);
 
   try {
     if (command === 'dump') {
-      await backupRestore.dump(directory);
+      await backupRestore.dump(directory, dbName);
     } else if (command === 'restore') {
       const dropExisting = args.includes('--drop');
-      await backupRestore.restore(directory, { dropExisting });
+      await backupRestore.restore(directory, { dropExisting, dbName });
     }
   } catch (error) {
     console.error('Operation failed:', error);

@@ -38,13 +38,19 @@ Exports databases from a MongoDB instance to a local directory.
 
 **Syntax:**
 ```bash
-node script.js dump <mongodb-uri> <output-directory>
+node script.js dump <mongodb-uri> <output-directory> [--db <db-name>]
 ```
+
+**Options:**
+- `--db <db-name>`: (Optional) Backup a specific database only.
 
 **Example:**
 ```bash
 # Backup local MongoDB to ./my-backups folder
 node script.js dump "mongodb://localhost:27017" ./my-backups
+
+# Backup only 'myDatabase'
+node script.js dump "mongodb://localhost:27017" ./my-backups --db myDatabase
 ```
 
 **Output Structure:**
@@ -66,10 +72,11 @@ Restores databases from a backup directory to a MongoDB instance.
 
 **Syntax:**
 ```bash
-node script.js restore <mongodb-uri> <input-directory> [--drop]
+node script.js restore <mongodb-uri> <input-directory> [--db <db-name>] [--drop]
 ```
 
 **Options:**
+- `--db <db-name>`: (Optional) Restore a specific database only from the backup directory.
 - `--drop`: (Optional) Drops the existing database or collection before restoring. Use with caution!
 
 **Examples:**
@@ -78,8 +85,8 @@ node script.js restore <mongodb-uri> <input-directory> [--drop]
 # Restore from ./my-backups to local MongoDB
 node script.js restore "mongodb://localhost:27017" ./my-backups
 
-# Restore and overwrite existing data (DROP existing DBs)
-node script.js restore "mongodb://localhost:27017" ./my-backups --drop
+# Restore only 'myDatabase' and overwrite existing data
+node script.js restore "mongodb://localhost:27017" ./my-backups --db myDatabase --drop
 ```
 
 ## Important Notes
